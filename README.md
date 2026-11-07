@@ -12,4 +12,15 @@ Design docs:
 - [Stack and deployment](docs/stack-and-deployment.md)
 - [Evaluation](docs/evaluation.md)
 
-Status: core pipeline (segmenter, validation, store, dual-run ingest) is implemented and tested against a fake backend. Real model backends are not yet written.
+Status: the pipeline (segmenter, validation, store, dual-run ingest) and the Apple Foundation Models backend work end to end. Qwen and consolidation are not yet written.
+
+## Apple FM backend
+
+Requires macOS 26+ on Apple Silicon with Apple Intelligence enabled.
+
+```
+cd apple-fm-shim && swift build -c release
+pip install -e '.[dev]' && pytest
+```
+
+The Apple FM tests skip automatically if the shim is not built or the model is unavailable.

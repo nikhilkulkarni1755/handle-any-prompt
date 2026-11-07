@@ -8,7 +8,7 @@
 
 ## Problem
 
-The input is arbitrary length and the model window is small. Apple's on-device model has about 4K tokens of input and output combined. The output must be a memory in which nothing is lost, nothing is invented, and vague statements stay vague.
+The input is arbitrary length and the model window is small. Apple's on-device model has a few thousand tokens of input and output combined (8192 as reported on the development machine). The output must be a memory in which nothing is lost, nothing is invented, and vague statements stay vague.
 
 The telephone game happens when model B reads model A's paraphrase and meaning decays with each hop. These rules prevent it.
 

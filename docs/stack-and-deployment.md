@@ -9,7 +9,7 @@ Cloud models (Haiku, Opus) are an opt-in escalation backend for `unprocessed_spa
 ## Stack
 
 - **Orchestrator:** Python. It handles segmentation, validation, queueing and consolidation, and defines a model-agnostic `Backend.extract(chunk, schema)` interface. Pydantic models define the schemas and double as JSON-schema constraints.
-- **Apple Foundation Models:** a small Swift shim exposes a local endpoint. It uses guided generation (`@Generable`) for structured output. This needs macOS 26 or later with Apple Intelligence enabled. If a Python SDK for Foundation Models proves usable, the shim can be dropped.
+- **Apple Foundation Models:** `apple-fm-shim/` is a Swift executable that speaks line-delimited JSON over stdio (ops: `info`, `tokens`, `extract`, `verify`). A fresh session is used per call so nothing leaks between chunks. The output schema is built with `DynamicGenerationSchema` because the `@Generable` macros need Xcode's macro plugin, which Command Line Tools lack. Seed 0 uses greedy sampling and other seeds use seeded random sampling. This needs macOS 26 or later with Apple Intelligence enabled. On the development machine the reported context size is 8192 tokens, and `tokenCount` needs macOS 26.4 or later.
 - **Small Qwen (3.5-class):** MLX-LM or llama.cpp with grammar-constrained or JSON-schema decoding.
 - **Storage:** SQLite with FTS5 and sqlite-vec.
 - **Embeddings:** a small local model (bge-small class, or Apple's NLEmbedding).
