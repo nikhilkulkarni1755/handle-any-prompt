@@ -12,4 +12,4 @@ Design docs:
 - [Stack and deployment](docs/stack-and-deployment.md)
 - [Evaluation](docs/evaluation.md)
 
-Status: design phase. No code yet.
+Status: core pipeline (segmenter, validation, store, dual-run ingest) is implemented and tested against a fake backend. Real model backends are not yet written.
