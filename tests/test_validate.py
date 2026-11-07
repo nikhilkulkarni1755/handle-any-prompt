@@ -57,3 +57,33 @@ def test_partially_captured_sentence_is_flagged():
     text = "Ship by Friday, budget is 5k."
     ok, _ = validate(Chunk(index=0, start=0, end=len(text), text=text), [rec("Ship by Friday")], run=0)
     assert uncovered(text, ok) == [(0, len(text))]
+
+
+def spec(quote, label=Specificity.exact):
+    ok, _ = validate(Chunk(index=0, start=0, end=len(quote), text=quote), [rec(quote).model_copy(update={"specificity": label})], run=0)
+    return ok[0].specificity
+
+
+def test_vague_prompt_is_not_exact_even_if_the_model_says_so():
+    assert spec("Build a backend like Facebook's News Feed that ranks posts and serves a fast feed.") == Specificity.vague
+
+
+def test_digits_make_a_quote_exact_even_if_the_model_says_vague():
+    assert spec("Passwords need at least 14 characters.", Specificity.vague) == Specificity.exact
+
+
+def test_code_literal_makes_a_quote_exact():
+    assert spec("Run `make up` to start.", Specificity.vague) == Specificity.exact
+
+
+def test_hedged_number_is_approximate():
+    assert spec("Our budget is about 85,000 dollars.") == Specificity.approximate
+    assert spec("Roughly 40 users per node.", Specificity.exact) == Specificity.approximate
+
+
+def test_unspecified_label_is_kept():
+    assert spec("Someone should look at it.", Specificity.unspecified) == Specificity.unspecified
+
+
+def test_model_approximate_without_any_value_becomes_vague():
+    assert spec("It should be reasonably fast.", Specificity.approximate) == Specificity.vague

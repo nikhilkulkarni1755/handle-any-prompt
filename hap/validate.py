@@ -1,5 +1,20 @@
-from hap.schemas import Chunk, ExtractedRecord, Record
+import re
+
+from hap.schemas import Chunk, ExtractedRecord, Record, Specificity
 from hap.segment import _units
+
+
+VALUE = re.compile(r"\d|`[^`\n]+`")  # a concrete value: a digit or a code literal
+APPROX = re.compile(r"\b(about|around|roughly|approximately|approx|nearly|almost|give or take|several|a few|some|many)\b|~", re.I)
+
+
+def refine_specificity(quote: str, label: Specificity) -> Specificity:
+    """The model labels nearly everything exact, so derive specificity from the quote itself."""
+    if label == Specificity.unspecified:
+        return label
+    if VALUE.search(quote):
+        return Specificity.approximate if APPROX.search(quote) else Specificity.exact
+    return Specificity.vague
 
 
 def validate(chunk: Chunk, extracted: list[ExtractedRecord], run: int) -> tuple[list[Record], list[ExtractedRecord]]:
@@ -16,7 +31,7 @@ def validate(chunk: Chunk, extracted: list[ExtractedRecord], run: int) -> tuple[
         last[e.quote] = pos
         start = chunk.start + pos
         accepted.append(
-            Record(**e.model_dump(), start=start, end=start + len(e.quote), chunk_index=chunk.index, run=run, confidence=0.0)
+            Record(**{**e.model_dump(), "specificity": refine_specificity(e.quote, e.specificity)}, start=start, end=start + len(e.quote), chunk_index=chunk.index, run=run, confidence=0.0)
         )
     return accepted, rejected
 
