@@ -1,9 +1,12 @@
+import logging
+
 from hap.backend import Backend
 from hap.schemas import Chunk, Record
 from hap.segment import segment
 from hap.store import Store
 from hap.validate import uncovered, validate
 
+log = logging.getLogger(__name__)
 PROMPT_VERSION = "v1"
 AGREED, VERIFIED, UNVERIFIED = 1.0, 0.7, 0.3
 
@@ -34,7 +37,9 @@ def ingest(text: str, store: Store, backend: Backend) -> str:
     ledger: list[str] = []
     stored: set[tuple] = set()
     all_records: list[Record] = []
-    for chunk in segment(text):
+    chunks = segment(text)
+    for chunk in chunks:
+        log.info("chunk %d/%d (chars %d-%d)", chunk.index + 1, len(chunks), chunk.start, chunk.end)
         records = _reconcile(backend, _run(backend, chunk, ledger, 0), _run(backend, chunk, ledger, 1))
         fresh = [r for r in records if (r.start, r.end, r.type) not in stored]  # overlap between chunks
         stored |= {(r.start, r.end, r.type) for r in fresh}

@@ -34,9 +34,11 @@ class Store:
         self.db.commit()
         return doc_id
 
+    def text(self, doc_id: str) -> str:
+        return self.db.execute("SELECT text FROM documents WHERE id = ?", (doc_id,)).fetchone()["text"]
+
     def get_span(self, doc_id: str, start: int, end: int) -> str:
-        text = self.db.execute("SELECT text FROM documents WHERE id = ?", (doc_id,)).fetchone()["text"]
-        return text[start:end]
+        return self.text(doc_id)[start:end]
 
     def add_records(self, doc_id: str, records: list[Record], model: str, prompt_version: str) -> None:
         for r in records:
