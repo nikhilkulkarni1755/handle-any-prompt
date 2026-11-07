@@ -25,7 +25,7 @@ def _units(text: str, max_chars: int) -> list[tuple[int, int]]:
     return units
 
 
-def segment(text: str, max_tokens: int = 600, overlap_tokens: int = 100) -> list[Chunk]:
+def segment(text: str, max_tokens: int = 300, overlap_tokens: int = 50) -> list[Chunk]:
     """Split text into chunks that are exact slices of it, overlapping at unit boundaries."""
     max_chars = max_tokens * CHARS_PER_TOKEN
     overlap_chars = overlap_tokens * CHARS_PER_TOKEN
