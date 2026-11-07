@@ -20,10 +20,10 @@ let recordSchema = DynamicGenerationSchema(name: "Record", properties: [
          "stated if asserted plainly, hedged if uncertain (maybe, might), implied if not said directly, unspecified if unclear."),
     prop("specificity", choice("Specificity", ["exact", "approximate", "vague", "unspecified"]),
          "exact if precise values are given, approximate if rough, vague if general, unspecified if no detail is given."),
-    prop("entities", DynamicGenerationSchema(arrayOf: text), "Names that appear inside the quote, copied exactly."),
+    prop("entities", DynamicGenerationSchema(arrayOf: text, maximumElements: 6), "Names that appear inside the quote, copied exactly."),
 ])
 let extractionSchema = try! GenerationSchema(
-    root: DynamicGenerationSchema(name: "Extraction", properties: [prop("records", DynamicGenerationSchema(arrayOf: recordSchema))]),
+    root: DynamicGenerationSchema(name: "Extraction", properties: [prop("records", DynamicGenerationSchema(arrayOf: recordSchema, maximumElements: 15))]),
     dependencies: [])
 let verdictSchema = try! GenerationSchema(
     root: DynamicGenerationSchema(name: "Verdict", properties: [prop("supported", DynamicGenerationSchema(type: Bool.self))]),
@@ -35,8 +35,9 @@ Never add detail the text does not state. If the text is vague, mark it vague. \
 Do not merge or reorder statements. Cover every sentence that says something.
 """
 
-func options(seed: Int) -> GenerationOptions {
-    GenerationOptions(sampling: seed == 0 ? .greedy : .random(top: 40, seed: UInt64(seed)))
+// Greedy decoding loops on long structured output, so every run samples (seeded); output is capped: unbounded generation can run away until the 8192-token window is full, costing minutes per chunk.
+func options(seed: Int, maxTokens: Int) -> GenerationOptions {
+    GenerationOptions(sampling: .random(top: 40, seed: UInt64(seed + 1)), temperature: 0.3, maximumResponseTokens: maxTokens)
 }
 
 func extract(_ req: [String: Any]) async throws -> [String: Any] {
@@ -45,7 +46,7 @@ func extract(_ req: [String: Any]) async throws -> [String: Any] {
     let seed = req["seed"] as? Int ?? 0
     let known = ledger.isEmpty ? "" : "Known names (for resolving pronouns only): \(ledger.joined(separator: ", "))\n\n"
     let session = LanguageModelSession(instructions: instructions)
-    let out = try await session.respond(to: "\(known)Input:\n\(chunk)", schema: extractionSchema, options: options(seed: seed))
+    let out = try await session.respond(to: "\(known)Input:\n\(chunk)", schema: extractionSchema, options: options(seed: seed, maxTokens: 1200))
     let records = try out.content.value([GeneratedContent].self, forProperty: "records").map { r -> [String: Any] in
         var rec: [String: Any] = [:]
         for key in ["quote", "type", "modality", "specificity"] { rec[key] = try r.value(String.self, forProperty: key) }
@@ -64,7 +65,7 @@ func verify(_ req: [String: Any]) async throws -> [String: Any] {
     Specificity: \(req["specificity"] as? String ?? "")
     Is every label supported by the quote, without adding detail the quote does not contain?
     """
-    let out = try await session.respond(to: prompt, schema: verdictSchema, options: options(seed: 0))
+    let out = try await session.respond(to: prompt, schema: verdictSchema, options: options(seed: 0, maxTokens: 100))
     return ["supported": try out.content.value(Bool.self, forProperty: "supported")]
 }
 
