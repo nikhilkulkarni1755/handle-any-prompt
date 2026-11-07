@@ -51,3 +51,9 @@ def test_repeated_quote_maps_to_successive_occurrences():
     chunk = Chunk(index=0, start=0, end=19, text="Yes. No. Yes. Done.")
     ok, _ = validate(chunk, [rec("Yes."), rec("Yes.")], run=0)
     assert [(r.start, r.end) for r in ok] == [(0, 4), (9, 13)]
+
+
+def test_partially_captured_sentence_is_flagged():
+    text = "Ship by Friday, budget is 5k."
+    ok, _ = validate(Chunk(index=0, start=0, end=len(text), text=text), [rec("Ship by Friday")], run=0)
+    assert uncovered(text, ok) == [(0, len(text))]

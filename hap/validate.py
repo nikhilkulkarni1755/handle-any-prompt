@@ -22,9 +22,22 @@ def validate(chunk: Chunk, extracted: list[ExtractedRecord], run: int) -> tuple[
 
 
 def uncovered(text: str, records: list[Record]) -> list[tuple[int, int]]:
-    """Sentence-level spans of text that no record's quote overlaps."""
-    return [
-        (a, b)
-        for a, b in _units(text, max_chars=len(text) or 1)
-        if text[a:b].strip() and not any(r.start < b and a < r.end for r in records)
-    ]
+    """Sentence-level spans with any letter or digit outside every record's quote, so partial capture is flagged."""
+    covered: list[list[int]] = []
+    for a, b in sorted((r.start, r.end) for r in records):
+        if covered and a <= covered[-1][1]:
+            covered[-1][1] = max(covered[-1][1], b)
+        else:
+            covered.append([a, b])
+    out = []
+    for a, b in _units(text, max_chars=len(text) or 1):
+        gaps, pos = [], a
+        for ca, cb in covered:
+            if cb <= a or ca >= b:
+                continue
+            gaps.append(text[pos:max(ca, a)])
+            pos = min(cb, b)
+        gaps.append(text[pos:b])
+        if any(c.isalnum() for g in gaps for c in g):
+            out.append((a, b))
+    return out
