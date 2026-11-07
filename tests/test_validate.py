@@ -45,3 +45,9 @@ def test_uncovered_reports_sentences_without_records():
 def test_fully_covered_has_no_gaps():
     ok, _ = validate(Chunk(index=0, start=0, end=3, text="Hi."), [rec("Hi.")], run=0)
     assert uncovered("Hi.", ok) == []
+
+
+def test_repeated_quote_maps_to_successive_occurrences():
+    chunk = Chunk(index=0, start=0, end=19, text="Yes. No. Yes. Done.")
+    ok, _ = validate(chunk, [rec("Yes."), rec("Yes.")], run=0)
+    assert [(r.start, r.end) for r in ok] == [(0, 4), (9, 13)]
