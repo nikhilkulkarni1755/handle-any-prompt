@@ -1,4 +1,4 @@
-from hap.segment import estimate_tokens, segment
+from hap.segment import _units, estimate_tokens, segment
 
 
 def test_empty_input_has_no_chunks():
@@ -46,3 +46,30 @@ def test_consecutive_chunks_overlap_and_progress():
     for a, b in zip(chunks, chunks[1:]):
         assert b.start > a.start
         assert b.start <= a.end
+
+
+def _cuts(text, max_tokens=1000):
+    return [a for a, _ in _units(text, max_tokens * 3)][1:]
+
+
+def test_inline_code_with_ellipsis_is_never_split():
+    text = "Use `INSERT ... ON CONFLICT DO NOTHING` here. Next sentence."
+    assert _cuts(text) == [text.index("Next")]
+
+
+def test_fenced_block_with_blank_lines_stays_whole():
+    text = "Intro.\n\n```sql\nSELECT 1.\n\nSELECT 2. Done.\n```\n\nAfter."
+    start, end = text.index("```sql"), text.index("```\n\nAfter") + 3
+    assert not [c for c in _cuts(text) if start < c < end]
+
+
+def test_ellipsis_in_prose_is_not_a_sentence_end():
+    text = "Wait... what happened here? Nothing."
+    assert _cuts(text) == [text.index("Nothing")]
+
+
+def test_oversize_code_block_splits_on_newlines_not_mid_line():
+    lines = [f"line number {i} of the code" for i in range(40)]
+    text = "```\n" + "\n".join(lines) + "\n```"
+    for a, b in _units(text, 300):
+        assert text[a:b].endswith("\n") or b == len(text)

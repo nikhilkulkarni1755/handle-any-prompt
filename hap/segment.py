@@ -1,9 +1,11 @@
 import re
+from bisect import bisect_left
 
 from hap.schemas import Chunk
 
 CHARS_PER_TOKEN = 3  # conservative: small models lack reliable public tokenizers
-BOUNDARY = re.compile(r"(?<=[.!?])\s+|\n\s*\n")
+BOUNDARY = re.compile(r"(?<=[^.\s][.!?])\s+|\n\s*\n")  # an ellipsis is not a sentence end
+CODE = re.compile(r"```[\s\S]*?```|`[^`\n]+`")  # boundaries inside code are not boundaries
 
 
 def estimate_tokens(text: str) -> int:
@@ -11,12 +13,14 @@ def estimate_tokens(text: str) -> int:
 
 
 def _units(text: str, max_chars: int) -> list[tuple[int, int]]:
-    cuts = [0] + [m.end() for m in BOUNDARY.finditer(text)] + [len(text)]
+    code = [m.span() for m in CODE.finditer(text)]  # sorted, non-overlapping
+    inside = lambda i: (k := bisect_left(code, (i,)) - 1) >= 0 and i < code[k][1]
+    cuts = [0] + [m.end() for m in BOUNDARY.finditer(text) if not inside(m.start())] + [len(text)]
     units = []
     for a, b in zip(cuts, cuts[1:]):
         while b - a > max_chars:
             window = text[a : a + max_chars]
-            ws = max(window.rfind(" "), window.rfind("\n"))
+            ws = window.rfind("\n") if "\n" in window else window.rfind(" ")  # prefer whole lines
             cut = a + ws + 1 if ws > 0 else a + max_chars
             units.append((a, cut))
             a = cut
